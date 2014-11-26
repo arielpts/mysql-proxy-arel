@@ -14,22 +14,22 @@ A little **experient** written in Lua and Ruby that enables you to perform [Arel
 
 **Original "SQL"**
 
-```
+```ruby
 #arel
 customer.select(*).where(customer[:name].eq('Ariel Patschiki'))
 ```
 
 **Rewritten SQL**
 
-```
+```sql
 SELECT * FROM `customer` WHERE `customer`.`name` = 'Ariel Patschiki'
 ```
 
-### Complex Query
+### More Query
 
 **Original SQL**
 
-```
+```ruby
 #arel
 customer.select(*). \
 join(address).on(address[:id].eq(customer[:address_id])). \
@@ -38,11 +38,39 @@ where(customer[:name].eq('Ariel Patschiki'))
 
 **Rewritten SQL**
 
-```
+```sql
 SELECT *
 FROM `customer`
 INNER JOIN `address` ON `address`.`id` = `customer`.`address_id`
 WHERE `customer`.`name` = 'Ariel Patschiki'
+```
+
+### Complex Query
+
+**Original SQL**
+
+```ruby
+#arel
+
+ids = [1, 2, 3]
+
+c = customer.take(1)
+ids.each do |customer_id|
+	sql = customer.select(subscription[:value].sum). \
+		join(subscription).on(subscription[:customer_id].eq(customer[:id])). \
+		where(customer[:id].eq(customer_id)). \
+		where(subscription[:status].eq('Confirmed')).to_sql
+
+	c = c.project(Arel::Nodes::SqlLiteral.new('(' + sql + ')').as('id_' + customer_id.to_s))
+end
+
+c
+```
+
+**Rewritten SQL**
+
+```sql
+SELECT  (SELECT SUM(`subscription`.`value`) AS sum_id FROM `customer` INNER JOIN `subscription` ON `subscription`.`customer_id` = `customer`.`id` WHERE `customer`.`id` = 1 AND `subscription`.`status` = 'Confirmed') AS id_1, (SELECT SUM(`subscription`.`value`) AS sum_id FROM `customer` INNER JOIN `subscription` ON `subscription`.`customer_id` = `customer`.`id` WHERE `customer`.`id` = 2 AND `subscription`.`status` = 'Confirmed') AS id_2, (SELECT SUM(`subscription`.`value`) AS sum_id FROM `customer` INNER JOIN `subscription` ON `subscription`.`customer_id` = `customer`.`id` WHERE `customer`.`id` = 3 AND `subscription`.`status` = 'Confirmed') AS id_3 FROM `customer`  LIMIT 1
 ```
 
 ## How?
